@@ -60,7 +60,7 @@ async function load(){
     if(!r.ok) throw new Error('HTTP '+r.status);
     const d=await r.json();
     const now=new Date(d.now);
-    document.getElementById('sub').textContent='Last updated: '+now.toLocaleString()+' &middot; Uptime: '+d.uptime;
+    document.getElementById('sub').innerHTML='Last updated: '+now.toLocaleString()+' \u00b7 Uptime: '+d.uptime;
     document.getElementById('stats').innerHTML=[
       {l:'Total Images',v:d.stats.total_images,c:'b'},
       {l:'Preprocessed',v:d.stats.preprocessed,c:'g'},
@@ -71,11 +71,11 @@ async function load(){
     document.getElementById('sources').innerHTML=ps.map(function(s){return '<div class=scard><div class=n>'+s.source+'</div><div class=sr><span>Images</span><span class=nm>'+s.total+'</span></div><div class=sr><span>Trained</span><span class=nm>'+s.trained+'</span></div></div>'}).join('');
     var tb=document.getElementById('recent');
     if(d.recent&&d.recent.length){
-      tb.innerHTML=d.recent.map(function(r){return '<tr><td>#'+r.id+'</td><td>'+(r.aircraft_name||'&mdash;')+'</td><td>'+r.source_site+'</td><td><span class="badge '+(r.is_preprocessed?'y':'n')+'">'+(r.is_preprocessed?'OK':'--')+'</span></td><td><span class="badge '+(r.is_trained?'y':r.is_preprocessed?'w':'n')+'">'+(r.is_trained?'OK':r.is_preprocessed?'wait':'--')+'</span></td><td class=tm>'+(r.created_at?new Date(r.created_at).toLocaleString():'')+'</td></tr>'}).join('');
+      tb.innerHTML=d.recent.map(function(r){return '<tr><td>#'+r.id+'</td><td>'+(r.aircraft_name||'\u2014')+'</td><td>'+r.source_site+'</td><td><span class="badge '+(r.is_preprocessed?'y':'n')+'">'+(r.is_preprocessed?'OK':'--')+'</span></td><td><span class="badge '+(r.is_trained?'y':r.is_preprocessed?'w':'n')+'">'+(r.is_trained?'OK':r.is_preprocessed?'wait':'--')+'</span></td><td class=tm>'+(r.created_at?new Date(r.created_at).toLocaleString():'')+'</td></tr>'}).join('');
     } else {
       tb.innerHTML='<tr><td colspan=6 style="text-align:center;color:#64748b;padding:2rem">No images collected yet. Scrapers are running, waiting 30-120s between requests.</td></tr>';
     }
-    document.getElementById('ft').textContent='Aviation ML Pipeline &middot; Running';
+    document.getElementById('ft').innerHTML='Aviation ML Pipeline \u00b7 Running';
   }catch(e){
     document.getElementById('stats').innerHTML='<div class=err>Could not load stats: '+e.message+'</div>';
     document.getElementById('sub').textContent='Pipeline is running but stats are not available yet';
@@ -121,7 +121,7 @@ class DashboardServer:
                 "per_source": per_source,
                 "recent": recent,
                 "uptime": self._uptime(),
-                "now": time.time(),
+                "now": int(time.time() * 1000),
             })
         except Exception as e:
             logger.exception("Stats API error")

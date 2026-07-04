@@ -15,8 +15,6 @@ RUN pip install --no-cache-dir \
 
 COPY . .
 
-VOLUME ["/app/data"]
-
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 ENV TORCH_DEVICE=cpu

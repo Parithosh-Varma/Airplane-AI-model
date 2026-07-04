@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.env
+data/images/*
+data/models/*
+data/ready_for_training/*
+data/*.db
+logs/*
+!logs/.gitkeep
+*.egg-info/
+dist/
+build/
+.DS_Store

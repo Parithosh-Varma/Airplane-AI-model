@@ -22,6 +22,21 @@ class AircraftImageDataset(Dataset):
         self.labels = labels
         self.augment = augment
 
+        from torchvision import transforms
+        self._transform = transforms.Compose([
+            transforms.Resize(TRAINING_CONFIG["image_size"]),
+            transforms.ToTensor(),
+            transforms.Normalize(
+                mean=[0.485, 0.456, 0.406],
+                std=[0.229, 0.224, 0.225],
+            ),
+        ])
+        self._aug = transforms.Compose([
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.RandomRotation(degrees=10),
+            transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+        ])
+
     def __len__(self):
         return len(self.image_paths)
 
@@ -32,17 +47,8 @@ class AircraftImageDataset(Dataset):
                 tensor = torch.from_numpy(np.load(path))
             else:
                 from PIL import Image
-                from torchvision import transforms
                 img = Image.open(path).convert("RGB")
-                transform = transforms.Compose([
-                    transforms.Resize(TRAINING_CONFIG["image_size"]),
-                    transforms.ToTensor(),
-                    transforms.Normalize(
-                        mean=[0.485, 0.456, 0.406],
-                        std=[0.229, 0.224, 0.225],
-                    ),
-                ])
-                tensor = transform(img)
+                tensor = self._transform(img)
 
             if tensor.shape[0] == 3:
                 pass
@@ -66,10 +72,4 @@ class AircraftImageDataset(Dataset):
             return dummy, torch.tensor(0, dtype=torch.long)
 
     def _augment(self, tensor):
-        from torchvision import transforms as T
-        aug = T.Compose([
-            T.RandomHorizontalFlip(p=0.5),
-            T.RandomRotation(degrees=10),
-            T.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
-        ])
-        return aug(tensor)
+        return self._aug(tensor)

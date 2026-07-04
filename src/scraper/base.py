@@ -2,7 +2,7 @@ import asyncio
 import logging
 import random
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -25,7 +25,6 @@ class BaseScraper(ABC):
         self.db = db_manager
         self.proxy_rotator = proxy_rotator
         self.session: Optional[aiohttp.ClientSession] = None
-        self._retry_count: dict[str, int] = {}
 
     @property
     @abstractmethod
@@ -95,7 +94,6 @@ class BaseScraper(ABC):
                 ) as resp:
                     if resp.status == 200:
                         text = await resp.text()
-                        self._retry_count[url] = 0
                         return text
                     elif resp.status == 429:
                         wait = (SCRAPER_CONFIG["backoff_base"] ** attempt) * 60
@@ -148,9 +146,11 @@ class BaseScraper(ABC):
 
     async def download_image(self, image_url: str, filepath: Path) -> bool:
         try:
+            proxy = self.proxy_rotator.get_proxy() if self.proxy_rotator else None
             async with self.session.get(
                 image_url,
                 headers=self._get_headers(),
+                proxy=proxy.get("http") if proxy else None,
                 timeout=aiohttp.ClientTimeout(total=60),
             ) as resp:
                 if resp.status == 200:
@@ -166,7 +166,7 @@ class BaseScraper(ABC):
             return False
 
     def build_filepath(self, listing: dict) -> Path:
-        today = datetime.utcnow().strftime("%Y-%m-%d")
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         filename = f"{listing.get('image_id', 'unknown')}.jpg"
         return IMAGES_DIR / self.source_name / today / filename
 

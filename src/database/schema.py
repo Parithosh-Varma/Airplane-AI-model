@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, create_engine
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import sessionmaker
@@ -18,11 +18,11 @@ class AircraftImage(Base):
     aircraft_name = Column(String(512), nullable=True)
     description = Column(Text, nullable=True)
     source_site = Column(String(128), nullable=False)
-    download_timestamp = Column(DateTime, default=datetime.utcnow)
+    download_timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     is_trained = Column(Boolean, default=False)
     is_preprocessed = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     def __repr__(self):
         return f"<AircraftImage(id={self.id}, source='{self.source_site}', trained={self.is_trained})>"

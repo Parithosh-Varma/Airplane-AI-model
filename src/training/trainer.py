@@ -97,9 +97,13 @@ class ModelTrainer:
                         await asyncio.sleep(TRAINING_CONFIG["check_interval_seconds"])
                         continue
 
-                    image_ids = [r.id for r in batch]
-                    image_paths = [r.local_filepath for r in batch if r.local_filepath]
-                    labels = [hash(r.aircraft_name or "") % TRAINING_CONFIG["num_classes"] for r in batch]
+                    valid = [r for r in batch if r.local_filepath]
+                    image_ids = [r.id for r in valid]
+                    image_paths = [r.local_filepath for r in valid]
+                    labels = [int.from_bytes(
+                        __import__("hashlib").md5((r.aircraft_name or "").encode()).digest()[:4],
+                        "big"
+                    ) % TRAINING_CONFIG["num_classes"] for r in valid]
 
                     loop = asyncio.get_running_loop()
                     await loop.run_in_executor(

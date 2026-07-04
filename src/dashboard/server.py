@@ -137,7 +137,8 @@ class DashboardServer:
         await self._runner.setup()
         site = web.TCPSite(self._runner, "0.0.0.0", self.port)
         await site.start()
-        logger.info("Dashboard live at http://0.0.0.0:%d", self.port)
+        actual_port = site._server.sockets[0].getsockname()[1]
+        logger.info("Dashboard live at http://0.0.0.0:%d", actual_port)
 
     async def stop(self):
         if self._runner:

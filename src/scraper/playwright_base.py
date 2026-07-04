@@ -20,6 +20,12 @@ class PlaywrightBaseScraper(ABC):
         self._browser: Optional[Browser] = None
         self._context: Optional[BrowserContext] = None
 
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
+        await self.close_browser()
+
     @property
     @abstractmethod
     def source_name(self) -> str:
@@ -131,20 +137,43 @@ class PlaywrightBaseScraper(ABC):
             await self._browser.close()
         logger.info("[%s] Browser closed", self.source_name)
 
+    def _resolve_url(self, url: str) -> str:
+        if not url:
+            return ""
+        if url.startswith("//"):
+            return "https:" + url
+        if url.startswith("/"):
+            from urllib.parse import urlsplit
+            parts = urlsplit(self.start_url)
+            return f"{parts.scheme}://{parts.netloc}{url}"
+        if url.startswith("http://") or url.startswith("https://"):
+            return url
+        from urllib.parse import urljoin
+        return urljoin(self.start_url, url)
+
     async def download_image(self, page: Page, image_url: str, filepath: Path) -> bool:
         filepath.parent.mkdir(parents=True, exist_ok=True)
+        abs_url = self._resolve_url(image_url)
+        if not abs_url:
+            return False
         try:
-            resp = await page.context.request.get(image_url)
+            resp = await page.context.request.get(abs_url, headers={
+                "Referer": self.start_url,
+                "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+            })
             if resp.ok:
                 data = await resp.body()
                 with open(filepath, "wb") as f:
                     f.write(data)
                 return True
             else:
-                logger.warning("[%s] Download HTTP %d for %s", self.source_name, resp.status, image_url)
+                logger.warning(
+                    "[%s] Download HTTP %d for %s", self.source_name, resp.status, abs_url,
+                )
                 return False
         except Exception as e:
-            logger.error("[%s] Download error %s: %s", self.source_name, image_url, e)
+            logger.error("[%s] Download error %s: %s", self.source_name, abs_url, e)
             return False
 
     def build_filepath(self, image_id: str) -> Path:

@@ -64,10 +64,14 @@ class AircraftModel(nn.Module):
         elif "vit" in self.model_name:
             x = self.backbone._process_input(x)
             n = x.shape[0]
-            x = self.backbone.class_token.expand(n, -1, -1)
-            x = torch.cat([x, self.backbone._process_input(x)], dim=1)
+            cls_token = self.backbone.class_token.expand(n, -1, -1)
+            x = torch.cat([cls_token, x], dim=1)
             x = self.backbone.encoder(x)
             x = x[:, 0]
+        elif "efficientnet" in self.model_name:
+            x = self.backbone.features(x)
+            x = self.backbone.avgpool(x)
+            x = torch.flatten(x, 1)
         else:
             x = self.backbone(x)
         return self.classifier(x)

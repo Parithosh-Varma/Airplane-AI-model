@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import re
 
@@ -32,8 +33,7 @@ class PlaywrightAirplanePicturesScraper(PlaywrightBaseScraper):
             img_url = ""
             if img:
                 img_url = await img.get_attribute("src") or await img.get_attribute("data-src") or ""
-                if img_url.startswith("//"):
-                    img_url = "https:" + img_url
+            img_url = self._resolve_url(img_url)
             photo_id = None
             m = re.search(r"/photo/(\d+)", href)
             if m:
@@ -48,17 +48,17 @@ class PlaywrightAirplanePicturesScraper(PlaywrightBaseScraper):
     async def extract_detail(self, page: Page, listing: dict) -> dict:
         result = dict(listing)
         try:
+            await page.wait_for_load_state("networkidle")
+            await asyncio.sleep(2)
             h1 = await page.query_selector("h1")
             if h1:
                 result["aircraft_name"] = (await h1.text_content() or "").strip()
             full = await page.query_selector("img.detail-image, img#detail_image, img[src*='pictures']")
             if not full:
-                full = await page.query_selector("a img")
+                full = await page.query_selector("img[src*='uploaded-images']")
             if full:
                 src = await full.get_attribute("src") or ""
-                if src.startswith("//"):
-                    src = "https:" + src
-                result["image_url"] = src
+                result["image_url"] = self._resolve_url(src)
             desc = await page.query_selector("meta[name='description'], meta[property='og:description']")
             if desc:
                 result["description"] = await desc.get_attribute("content") or ""

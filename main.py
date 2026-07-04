@@ -3,7 +3,7 @@ import logging
 import signal
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from contextlib import suppress
 
 from config import DATABASE_URL, LOGGING_CONFIG, SCRAPER_CONFIG, RAILWAY_PORT
@@ -107,7 +107,7 @@ class Pipeline:
             loop.add_signal_handler(sig, self._handle_signal)
 
         logger.info("=" * 60)
-        logger.info("Aviation ML Pipeline starting at %s", datetime.utcnow())
+        logger.info("Aviation ML Pipeline starting at %s", datetime.now(timezone.utc))
         logger.info("=" * 60)
 
         port = RAILWAY_PORT or 8080
@@ -145,8 +145,12 @@ class Pipeline:
                 [scrape_task, cancel_handle],
                 return_when=asyncio.FIRST_COMPLETED,
             )
-            if cancel_handle in done:
-                scrape_task.cancel()
+            cancel_handle.cancel()
+            if scrape_task in done:
+                return
+            scrape_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await scrape_task
 
     async def _stats_logger(self):
         while not self._shutdown.is_set():

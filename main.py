@@ -18,6 +18,30 @@ from src.training.trainer import ModelTrainer
 
 from pathlib import Path
 
+if sys.version_info >= (3, 11):
+    _TaskGroup = asyncio.TaskGroup
+else:
+    class _TaskGroup:
+        def __init__(self):
+            self._tasks = []
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, exc_type, exc_val, exc_tb):
+            if exc_type is not None:
+                for t in self._tasks:
+                    t.cancel()
+                await asyncio.gather(*self._tasks, return_exceptions=True)
+                return False
+            results = await asyncio.gather(*self._tasks, return_exceptions=True)
+            for r in results:
+                if isinstance(r, BaseException) and not isinstance(r, (asyncio.CancelledError, KeyboardInterrupt)):
+                    raise r
+            return False
+        def create_task(self, coro, name=None):
+            t = asyncio.ensure_future(coro)
+            self._tasks.append(t)
+            return t
+
 _log_handlers = [logging.StreamHandler(sys.stdout)]
 _log_file = Path("logs/pipeline.log")
 try:
@@ -83,7 +107,7 @@ class Pipeline:
         preprocessor = ImagePreprocessor(self.db)
         trainer = ModelTrainer(self.db)
 
-        async with asyncio.TaskGroup() as tg:
+        async with _TaskGroup() as tg:
             tg.create_task(self._watch_shutdown(), name="shutdown_watcher")
 
             for scraper in scrapers:

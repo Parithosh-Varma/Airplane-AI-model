@@ -11,9 +11,12 @@ IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
-_raw_db_url = os.getenv("DATABASE_URL", f"sqlite+aiosqlite:///{DATA_DIR / 'pipeline.db'}")
-if _raw_db_url.startswith("postgresql://") and "+asyncpg" not in _raw_db_url:
-    _raw_db_url = _raw_db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+_raw_db_url = os.getenv("DATABASE_URL", f"sqlite+pysqlite:///{DATA_DIR / 'pipeline.db'}")
+if _raw_db_url.startswith("postgresql://"):
+    if "+asyncpg" in _raw_db_url:
+        _raw_db_url = _raw_db_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://", 1)
+    elif "+psycopg2" not in _raw_db_url and _raw_db_url.count("://") == 1:
+        _raw_db_url = _raw_db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
     os.environ["DATABASE_URL"] = _raw_db_url
 DATABASE_URL = _raw_db_url
 

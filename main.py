@@ -10,11 +10,27 @@ from config import DATABASE_URL, LOGGING_CONFIG, SCRAPER_CONFIG, RAILWAY_PORT
 from src.dashboard.server import DashboardServer
 from src.database.manager import DatabaseManager
 from src.preprocessing.image_processor import ImagePreprocessor
-from src.scraper.airplanepictures import AirplanePicturesScraper
-from src.scraper.jetphotos import JetPhotosScraper
-from src.scraper.planespotters import PlanespottersScraper
 from src.scraper.proxy_rotator import ProxyRotator
 from src.training.trainer import ModelTrainer
+
+if SCRAPER_CONFIG["use_playwright"]:
+    from src.scraper.playwright_jetphotos import PlaywrightJetPhotosScraper
+    from src.scraper.playwright_airplanepictures import PlaywrightAirplanePicturesScraper
+    from src.scraper.playwright_planespotters import PlaywrightPlanespottersScraper
+    _SCRAPER_CLASSES = [
+        PlaywrightJetPhotosScraper,
+        PlaywrightAirplanePicturesScraper,
+        PlaywrightPlanespottersScraper,
+    ]
+else:
+    from src.scraper.airplanepictures import AirplanePicturesScraper
+    from src.scraper.jetphotos import JetPhotosScraper
+    from src.scraper.planespotters import PlanespottersScraper
+    _SCRAPER_CLASSES = [
+        JetPhotosScraper,
+        AirplanePicturesScraper,
+        PlanespottersScraper,
+    ]
 
 from pathlib import Path
 
@@ -98,11 +114,7 @@ class Pipeline:
         dashboard = DashboardServer(self.db, port, self._uptime_start)
         await dashboard.start()
 
-        scrapers = [
-            JetPhotosScraper(self.db, self.proxy_rotator),
-            AirplanePicturesScraper(self.db, self.proxy_rotator),
-            PlanespottersScraper(self.db, self.proxy_rotator),
-        ]
+        scrapers = [cls(self.db) if SCRAPER_CONFIG["use_playwright"] else cls(self.db, self.proxy_rotator) for cls in _SCRAPER_CLASSES]
 
         preprocessor = ImagePreprocessor(self.db)
         trainer = ModelTrainer(self.db)

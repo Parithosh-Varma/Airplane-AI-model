@@ -1,5 +1,6 @@
 # Core
 aiohttp>=3.9.0
+playwright>=1.45.0
 asyncio-atexit>=0.2.1
 beautifulsoup4>=4.12.0
 lxml>=5.0.0

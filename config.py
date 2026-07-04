@@ -12,17 +12,21 @@ MODELS_DIR.mkdir(parents=True, exist_ok=True)
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
 _raw_db_url = os.getenv("DATABASE_URL", f"sqlite+pysqlite:///{DATA_DIR / 'pipeline.db'}")
-if _raw_db_url.startswith("postgresql://"):
-    if "+asyncpg" in _raw_db_url:
-        _raw_db_url = _raw_db_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://", 1)
-    elif "+psycopg2" not in _raw_db_url and _raw_db_url.count("://") == 1:
-        _raw_db_url = _raw_db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+if _raw_db_url.startswith("postgresql+asyncpg://"):
+    _raw_db_url = _raw_db_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://", 1)
+elif _raw_db_url.startswith("postgresql://") and "+psycopg2" not in _raw_db_url:
+    _raw_db_url = _raw_db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+if _raw_db_url.startswith("postgresql"):
     os.environ["DATABASE_URL"] = _raw_db_url
 DATABASE_URL = _raw_db_url
 
-RAILWAY_PORT = int(os.getenv("PORT", os.getenv("RAILWAY_PORT", "0")))
+try:
+    RAILWAY_PORT = int(os.getenv("PORT", os.getenv("RAILWAY_PORT", "0")))
+except ValueError:
+    RAILWAY_PORT = 0
 
 SCRAPER_CONFIG = {
+    "use_playwright": os.getenv("USE_PLAYWRIGHT", "false").lower() in ("1", "true", "yes"),
     "politeness_delay_min": int(os.getenv("POLITENESS_DELAY_MIN", "30")),
     "politeness_delay_max": int(os.getenv("POLITENESS_DELAY_MAX", "120")),
     "max_retries": int(os.getenv("MAX_RETRIES", "5")),

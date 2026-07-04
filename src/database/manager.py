@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 from typing import Optional, List
-from sqlalchemy import create_engine, func
+from sqlalchemy import create_engine, func, case, Integer
 from sqlalchemy.orm import sessionmaker, Session
 
 from src.database.schema import Base, AircraftImage, init_db
@@ -136,7 +136,7 @@ class DatabaseManager:
             rows = session.query(
                 AircraftImage.source_site,
                 func.count(AircraftImage.id),
-                func.sum(AircraftImage.is_trained.cast(int)),
+                func.sum(case((AircraftImage.is_trained == True, 1), else_=0)),
             ).group_by(AircraftImage.source_site).all()
             return [
                 {"source": r[0], "total": r[1], "trained": r[2] or 0}

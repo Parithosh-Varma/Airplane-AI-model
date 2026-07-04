@@ -201,9 +201,10 @@ The pipeline auto-detects Railway:
 Set these in the Railway Dashboard or via the CLI:
 
 ```
-POLITENESS_DELAY_MIN=30
-POLITENESS_DELAY_MAX=120
-MAX_RETRIES=5
+USE_PLAYWRIGHT=true
+POLITENESS_DELAY_MIN=60
+POLITENESS_DELAY_MAX=180
+MAX_RETRIES=3
 MIN_NEW_IMAGES=500
 MODEL_NAME=resnet50
 TORCH_DEVICE=cpu
@@ -211,3 +212,5 @@ LOG_LEVEL=INFO
 ```
 
 > **Note:** Railway provides `DATABASE_URL` and `PORT` automatically — do **not** set them manually.
+>
+> **Tip:** Set `USE_PLAYWRIGHT=true` to use headless Chromium browsers instead of plain HTTP requests. This bypasses most anti-bot protections because the sites see a real browser. Playwright Chromium (~300MB) is pre-installed in the Docker image.

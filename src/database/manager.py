@@ -114,15 +114,48 @@ class DatabaseManager:
 
     def get_stats(self) -> dict:
         with self.get_session() as session:
-            total = session.query(func.count(AircraftImage.id)).scalar()
+            total = session.query(func.count(AircraftImage.id)).scalar() or 0
             untrained = session.query(func.count(AircraftImage.id)).filter(
                 AircraftImage.is_trained == False
-            ).scalar()
+            ).scalar() or 0
             preprocessed = session.query(func.count(AircraftImage.id)).filter(
                 AircraftImage.is_preprocessed == True
-            ).scalar()
+            ).scalar() or 0
+            trained = session.query(func.count(AircraftImage.id)).filter(
+                AircraftImage.is_trained == True
+            ).scalar() or 0
             return {
                 "total_images": total,
                 "untrained": untrained,
                 "preprocessed": preprocessed,
+                "trained": trained,
             }
+
+    def get_per_source_stats(self) -> list[dict]:
+        with self.get_session() as session:
+            rows = session.query(
+                AircraftImage.source_site,
+                func.count(AircraftImage.id),
+                func.sum(AircraftImage.is_trained.cast(int)),
+            ).group_by(AircraftImage.source_site).all()
+            return [
+                {"source": r[0], "total": r[1], "trained": r[2] or 0}
+                for r in rows
+            ]
+
+    def get_recent_images(self, limit: int = 20) -> list[dict]:
+        with self.get_session() as session:
+            rows = session.query(AircraftImage).order_by(
+                AircraftImage.created_at.desc()
+            ).limit(limit).all()
+            return [
+                {
+                    "id": r.id,
+                    "aircraft_name": r.aircraft_name,
+                    "source_site": r.source_site,
+                    "is_trained": r.is_trained,
+                    "is_preprocessed": r.is_preprocessed,
+                    "created_at": r.created_at.isoformat() if r.created_at else None,
+                }
+                for r in rows
+            ]

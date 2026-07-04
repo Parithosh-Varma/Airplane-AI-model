@@ -2,12 +2,12 @@ import asyncio
 import logging
 import signal
 import sys
+import time
 from datetime import datetime
 from contextlib import suppress
 
-from aiohttp import web
-
 from config import DATABASE_URL, LOGGING_CONFIG, SCRAPER_CONFIG, RAILWAY_PORT
+from src.dashboard.server import DashboardServer
 from src.database.manager import DatabaseManager
 from src.preprocessing.image_processor import ImagePreprocessor
 from src.scraper.airplanepictures import AirplanePicturesScraper
@@ -40,6 +40,7 @@ class Pipeline:
         self.db = DatabaseManager(DATABASE_URL, echo=False)
         self.proxy_rotator = self._init_proxy_rotator()
         self._shutdown = asyncio.Event()
+        self._uptime_start = time.time()
 
     def _init_proxy_rotator(self) -> ProxyRotator:
         rotator = ProxyRotator(
@@ -60,18 +61,6 @@ class Pipeline:
         logger.info("Shutdown signal received. Stopping pipeline gracefully...")
         self._shutdown.set()
 
-    async def _healthcheck(self):
-        if not RAILWAY_PORT:
-            return
-        app = web.Application()
-        app.router.add_get("/health", lambda r: web.json_response({"status": "ok"}))
-
-        runner = web.AppRunner(app)
-        await runner.setup()
-        site = web.TCPSite(runner, "0.0.0.0", RAILWAY_PORT)
-        await site.start()
-        logger.info("Healthcheck server listening on 0.0.0.0:%d", RAILWAY_PORT)
-
     async def run(self):
         loop = asyncio.get_running_loop()
         for sig in (signal.SIGINT, signal.SIGTERM):
@@ -80,6 +69,10 @@ class Pipeline:
         logger.info("=" * 60)
         logger.info("Aviation ML Pipeline starting at %s", datetime.utcnow())
         logger.info("=" * 60)
+
+        port = RAILWAY_PORT or 8080
+        dashboard = DashboardServer(self.db, port, self._uptime_start)
+        await dashboard.start()
 
         scrapers = [
             JetPhotosScraper(self.db, self.proxy_rotator),
@@ -92,7 +85,6 @@ class Pipeline:
 
         async with asyncio.TaskGroup() as tg:
             tg.create_task(self._watch_shutdown(), name="shutdown_watcher")
-            tg.create_task(self._healthcheck(), name="healthcheck")
 
             for scraper in scrapers:
                 tg.create_task(self._run_scraper(scraper), name=f"scraper_{scraper.source_name}")
